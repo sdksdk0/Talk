@@ -254,8 +254,6 @@ public class Client implements Runnable {
 		}  catch (Exception e) {
 			connected=false;
 			e.printStackTrace();
-			
-			
 		}
 	}
 	

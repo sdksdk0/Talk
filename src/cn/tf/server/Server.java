@@ -166,9 +166,7 @@ public class Server {
 				MessageDialog.openError(shell, "失败","服务器已宕机..");
 				btnNewButton.setEnabled(true);
 			}
-			
 		}
-		
 	}
 	
 	
@@ -191,8 +189,6 @@ public class Server {
 		public String getName() {
 			return this.name;
 		}
-		
-
 
 		public OnLineClient(Socket sk){
 			try {
