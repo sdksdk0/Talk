@@ -8,6 +8,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Label;
@@ -47,7 +48,7 @@ public class Client implements Runnable {
 	private Button button ;//登录按钮
 	private Button button_2; //发送按钮
 	private Display display;
-	
+	private boolean isForce=false ;
 	
 	
 	/**
@@ -101,6 +102,7 @@ public class Client implements Runnable {
 		label.setBounds(10, 10, 97, 20);
 		
 		text = new Text(composite_4, SWT.BORDER);
+		text.setText("12345");
 		text.setBounds(355, 7, 73, 26);
 		
 		Label label_1 = new Label(composite_4, SWT.NONE);
@@ -108,6 +110,7 @@ public class Client implements Runnable {
 		label_1.setBounds(463, 10, 76, 20);
 		
 		text_1 = new Text(composite_4, SWT.BORDER);
+		text_1.setText("192.168.195.2");
 		text_1.setBounds(114, 10, 137, 26);
 		
 		Button button_1 = new Button(composite_4, SWT.NONE);
@@ -221,11 +224,12 @@ public class Client implements Runnable {
 				public void widgetSelected(SelectionEvent e) {
 					try {
 						dos.writeUTF("end "+name);
-						System.exit(0);
+						dos.flush();
 						
 					} catch (Exception e1) {
-						e1.printStackTrace();
+						e1.printStackTrace();	
 					}
+					connected=false;
 				}
 			});
 		
@@ -258,9 +262,12 @@ public class Client implements Runnable {
 	
 	@Override
 	public void run(){
+		
+		
 		while(true){
+			try {
 			if(connected && sk.isConnected()  &&  !sk.isClosed()){
-					try {
+
 						msg=dis.readUTF();
 						 //获取服务器的回送信息
 						if(msg.startsWith("onLineUser ")){
@@ -290,11 +297,30 @@ public class Client implements Runnable {
 								}
 							});
 							
-						}
-					} catch (IOException e) {
+						}else if(msg.startsWith("end ")){	
+							break;
+						}else if(msg.startsWith("again ")){		
+							isForce=true;
+							connected=false;
+							break;
+							
+						}	
+						
+					}
+				} catch (IOException e) {
 						e.printStackTrace();
-					} 
+				} 
 			}
+			
+			display.asyncExec(new Runnable(){
+				@Override
+				public void run() {
+					if(isForce){
+						MessageDialog.openError(shell,"下线通知","您的账号已在其他地方登录，若非本人操作，请及时修改密码...");	
+					}
+					shell.dispose();	
+				}
+			});
+			
 		}
-	}
 }

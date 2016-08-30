@@ -39,6 +39,10 @@ public class Server {
 
 	
 	private List<String> userList=new ArrayList<String>();
+	
+	
+	
+	
 	/**
 	 * Launch the application.
 	 * @param args
@@ -81,6 +85,7 @@ public class Server {
 		composite.setBounds(10, 10, 814, 450);
 		
 		text = new Text(composite, SWT.BORDER);
+		text.setText("12345");
 		text.setBounds(170, 48, 234, 26);
 		
 		btnNewButton = new Button(composite, SWT.NONE);
@@ -182,6 +187,11 @@ public class Server {
 		public String getIp() {
 			return this.ip;
 		}
+		
+		public String getName() {
+			return this.name;
+		}
+		
 
 
 		public OnLineClient(Socket sk){
@@ -220,26 +230,84 @@ public class Server {
 		public void run() {
 		
 				try {
-					
 					while(connected){
 					//如果当前用户还在线
 					String info=dis.readUTF(); //读取用户发送的信息,服务器之负责转发数据
 					
+					boolean isExist=false;
+					OnLineClient  isRemoveObj=null;
 					if(info.startsWith("login ")){  //说明是用户的登录请求 
 						name=info.substring(info.indexOf(" ")+1);
-						//将当前用户加入到在线用户列表中
-						clients.add(this);
-						userList.add(name);  //添加到用户列表
 						
-						//在服务器列表中显示当前用户
-						display.asyncExec(new Runnable(){
-							@Override
-							public void run() {
-								TableItem ti=new TableItem(table, SWT.NONE);
-								ti.setText(new String[]{ip,name});
+						for(OnLineClient  olc:clients){
+							if(name.equals(olc.getName())){
+								//说明已经登录了
+								isExist=true;
 								
+								isRemoveObj=olc;
+								olc.send("again ");
+								break;
 							}
-						});
+						}
+					
+						
+						if(isExist){
+							clients.remove(isRemoveObj);
+							userList.remove(name);
+							
+							//将当前用户从服务器列表中移除
+							display.asyncExec(new Runnable(){
+								@Override
+								public void run() {
+									TableItem[] tis=table.getItems();
+									for (int i=0,len=tis.length;i<len;i++) {
+										if(name.equals(tis[i].getText(1).trim())){
+											table.remove(i);
+											
+											StringBuffer sb=new StringBuffer();
+											for(String str:userList){
+												sb.append(str+",");
+											}
+											//将当前用户发送给所有在线用户
+											for(OnLineClient  ct:clients){
+												ct.send("onLineUser "+sb.toString());
+											}
+											
+											break;
+										}
+									}
+								}
+							});
+						}
+						
+							//将当前用户加入到在线用户列表中
+							clients.add(this);
+							userList.add(name);  //添加到用户列表
+							
+							//在服务器列表中显示当前用户
+							display.asyncExec(new Runnable(){
+								@Override
+								public void run() {
+									TableItem ti=new TableItem(table, SWT.NONE);
+									ti.setText(new String[]{ip,name});
+								}
+							});
+							
+							StringBuffer sb=new StringBuffer();
+							for(String str:userList){
+								sb.append(str+",");
+							}
+							//将当前用户发送给所有在线用户
+							for(OnLineClient  ct:clients){
+								ct.send("onLineUser "+sb.toString());
+							}
+						
+						
+					}else if(info.startsWith("end ")){  //说明是用户的下线请求
+						final String outName=info.substring(info.indexOf(" ")+1);
+						
+						clients.remove(this); 
+						userList.remove(outName);
 						
 						StringBuffer sb=new StringBuffer();
 						for(String str:userList){
@@ -249,17 +317,24 @@ public class Server {
 						for(OnLineClient  ct:clients){
 							ct.send("onLineUser "+sb.toString());
 						}
-
-					}else if(info.startsWith("end ")){  //说明是用户的下线请求
-						name=info.substring(info.indexOf(" ")+1);
 						
-						clients.remove(name); 
-						userList.remove(name);
+						//通知用户下线
+						this.send("end ");
+						connected=false;
+						//将当前用户从服务器列表中移除
+						display.asyncExec(new Runnable(){
+							@Override
+							public void run() {
+								TableItem[] tis=table.getItems();
+								for (int i=0,len=tis.length;i<len;i++) {
+									if(outName.equals(tis[i].getText(1).trim())){
+										table.remove(i);
+										break;
+									}
+								}
+							}
+						});
 						
-						
-						for(OnLineClient  olc:clients){
-							olc.send(info);
-						}
 						
 					}else if(info.startsWith("msg ")){  //用户的聊天记录请求
 						
@@ -267,11 +342,11 @@ public class Server {
 						for(OnLineClient  olc:clients){
 							olc.send(info);
 						}
-					}
-				  }
+					  }
+				   }
 				} catch (IOException e) {
 					connected=false;
-					MessageDialog.openError(shell, "失败", name+"已经下线了...");
+					System.out.println("已经下线了...");
 					e.printStackTrace();	
 					clients.remove(this);  //如果当前用户已经下线，需要将其从在线用户列表中删除
 				}finally{
@@ -283,7 +358,6 @@ public class Server {
 						}
 					}
 				}
+			}
 		}
 	}
-
-}
